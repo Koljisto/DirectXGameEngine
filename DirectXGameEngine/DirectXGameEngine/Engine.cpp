@@ -3,7 +3,15 @@
 bool Engine::Initialize(const HINSTANCE h_instance, const std::string& window_title, const std::string& window_class,
                         const int width, const int height)
 {
-	return this->render_window_.Initialize(this, h_instance, window_title, window_class, width, height);
+	if(!this->render_window_.Initialize(this, h_instance, window_title, window_class, width, height))
+	{
+		return false;
+	}
+	if (!gfx_.Initialize(this->render_window_.GetHWND(), width, height))
+	{
+		return false;
+	}
+	return true;
 }
 
 bool Engine::ProcessMessages()
@@ -26,4 +34,9 @@ void Engine::Update()
 	{
 		MouseEvent em = mouse_.ReadEvent();
 	}
+}
+
+void Engine::RenderFrame()
+{
+	gfx_.RenderFrame();
 }

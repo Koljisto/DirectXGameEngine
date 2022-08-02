@@ -136,13 +136,14 @@ LRESULT WindowContainer::WindowProc(const HWND hwnd, const UINT uMsg, const WPAR
 		}
 		case WM_INPUT:
 		{
-			UINT dataSize;
-			GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, NULL, &dataSize, sizeof(RAWINPUTHEADER)); //Need to populate data size first
+			UINT data_size;
+			GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, NULL, &data_size, sizeof(RAWINPUTHEADER));
+			//Need to populate data size first
 
-			if (dataSize > 0)
+			if (data_size > 0)
 			{
-				const auto raw_data = std::make_unique<BYTE[]>(dataSize);
-				if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, raw_data.get(), &dataSize, sizeof(RAWINPUTHEADER)) == dataSize)
+				const auto raw_data = std::make_unique<BYTE[]>(data_size);
+				if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, raw_data.get(), &data_size, sizeof(RAWINPUTHEADER)) == data_size)
 				{
 					const RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(raw_data.get());
 					if (raw->header.dwType == RIM_TYPEMOUSE)
