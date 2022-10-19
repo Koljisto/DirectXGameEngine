@@ -1,10 +1,14 @@
 struct PS_INPUT
 {
     float4 in_position : SV_POSITION;
-    float3 in_color : COLOR;
+    float2 in_tex_coord : TEXCOORD;
 };
 
-float4 main(PS_INPUT input) : SV_TARGET
+Texture2D obj_texture : TEXTURE : register(t0);
+SamplerState obj_sampler_state : SAMPLER : register(s0);
+
+float4 main(const PS_INPUT input) : SV_TARGET
 {
-    return float4(input.in_color, 1.0f);
+    float3 pixel_color = obj_texture.Sample(obj_sampler_state, input.in_tex_coord);
+    return float4(pixel_color, 1.0f);
 }

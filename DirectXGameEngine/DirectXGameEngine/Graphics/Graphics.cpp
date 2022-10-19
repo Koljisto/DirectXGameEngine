@@ -14,30 +14,35 @@ bool Graphics::Initialize(const HWND hwnd, const int width, const int height)
 	return true;
 }
 
-void Graphics::RenderFrame() const
+void Graphics::RenderFrame()
 {
 	constexpr float bg_color[] = {0.f, 0.f, 0.f, 1.0f};
 	this->device_context_->ClearRenderTargetView(this->render_target_view_.Get(), bg_color);
 	this->device_context_->ClearDepthStencilView(this->depth_stencil_view_.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
 	this->device_context_->IASetInputLayout(this->vertex_shader_.GetInputLayout());
 	this->device_context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	this->device_context_->RSSetState(this->rasterizer_state_.Get());
 	this->device_context_->OMSetDepthStencilState(this->depth_stencil_state_.Get(), 0);
+	this->device_context_->PSSetSamplers(0, 1, this->sample_state_.GetAddressOf());
 	this->device_context_->VSSetShader(vertex_shader_.GetShader(), NULL, 0);
 	this->device_context_->PSSetShader(pixel_shader_.GetShader(), NULL, 0);
 
-	UINT stride;
 	UINT offset;
-	stride = sizeof(Vertex);
 	offset = 0;
 
-	// Green Triangle
-	this->device_context_->IASetVertexBuffers(0, 1, vertex_buffer2_.GetAddressOf(), &stride, &offset);
-	this->device_context_->Draw(3, 0);
+	// Update Constant Buffer
+	constant_buffer_.data_.mat = DirectX::XMMatrixTranslation(0.0f, -0.5f, 0.0f);
+	constant_buffer_.data_.mat = DirectX::XMMatrixTranspose(constant_buffer_.data_.mat);
+	if (!constant_buffer_.ApplyChanges())
+		return;
+	this->device_context_->VSSetConstantBuffers(0, 1, this->constant_buffer_.GetAddressOf());
+	// Square
+	this->device_context_->PSSetShaderResources(0, 1, this->texture_.GetAddressOf());
+	this->device_context_->IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(), vertex_buffer_.StridePtr(), &offset);
+	this->device_context_->IASetIndexBuffer(indices_buffer_.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-	// Red Triangle
-	this->device_context_->IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(), &stride, &offset);
-	this->device_context_->Draw(3, 0);
+	this->device_context_->DrawIndexed(indices_buffer_.BufferSize(), 0, 0);
 
 	// Draw Text
 	sprite_batch_->Begin();
@@ -243,16 +248,16 @@ bool Graphics::InitializeShaders()
 		{
 			"POSITION",
 			0,
-			DXGI_FORMAT_R32G32B32_FLOAT, // R32-G32-B32-A32
+			DXGI_FORMAT_R32G32B32_FLOAT, // R32-G32-B32
 			0,
 			0,
 			D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
 			0
 		},
 		{
-			"COLOR",
+			"TEXCOORD",
 			0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
+			DXGI_FORMAT_R32G32_FLOAT,
 			0,
 			D3D11_APPEND_ALIGNED_ELEMENT,
 			D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
@@ -273,59 +278,49 @@ bool Graphics::InitializeShaders()
 
 bool Graphics::InitializeScene()
 {
-	// Red Triangle
-	Vertex v1[] =
+	// Textured Square
+	Vertex v[] =
 	{
-		Vertex(-0.5f,-0.5f,1.0f,1.0f,0.0f,0.0f), //Bottom Left [Red]
-		Vertex(0.0f,0.5f,1.0f,1.0f,0.0f,0.0f), //Top Middle [Green]
-		Vertex(0.5f,-0.5f,1.0f,1.0f,0.0f,0.0f), //Bottom Right [Blue]
+		Vertex(-0.5f,  -0.5f, 1.0f, 0.0f, 1.0f), //Bottom Left   - [0]
+		Vertex(-0.5f,  0.5f,  1.0f, 0.0f, 0.0f), //Top Left      - [1]
+		Vertex(0.5f,   0.5f,  1.0f, 1.0f, 0.0f), //Top Right     - [2]
+		Vertex(0.5f,   -0.5f, 1.0f, 1.0f, 1.0f), //Bottom Right  - [3]
 	};
 
-	D3D11_BUFFER_DESC vertex_buffer_desc;
-	ZeroMemory(&vertex_buffer_desc, sizeof(vertex_buffer_desc));
-
-	vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-	vertex_buffer_desc.ByteWidth = ARRAYSIZE(v1) * sizeof(Vertex);
-	vertex_buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vertex_buffer_desc.CPUAccessFlags = 0;
-	vertex_buffer_desc.MiscFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA vertex_buffer_data;
-	ZeroMemory(&vertex_buffer_data, sizeof(vertex_buffer_data));
-
-	vertex_buffer_data.pSysMem = v1;
-
-	HRESULT hr = this->device_->CreateBuffer(&vertex_buffer_desc, &vertex_buffer_data, this->vertex_buffer_.GetAddressOf());
-	if(FAILED(hr))
+	// Load Vertex Data
+	HRESULT hr = this->vertex_buffer_.Initialize(this->device_.Get(), v, ARRAYSIZE(v));
+	if (FAILED(hr))
 	{
 		ErrorLogger::Log(hr, "Failed to create vertex buffer");
 		return false;
 	}
 
-	// Red Triangle
-	Vertex v2[] =
+	DWORD indices[] =
 	{
-		Vertex(-0.25f,-0.25f,0.0f,0.0f,1.0f,0.0f), //Bottom Left [Red]
-		Vertex(0.0f,0.25f,0.0f,0.0f,1.0f,0.0f), //Top Middle [Green]
-		Vertex(0.25f,-0.25f,0.0f,0.0f,1.0f,0.0f), //Bottom Right [Blue]
+		0, 1, 2,
+		0, 2, 3
 	};
 
-	ZeroMemory(&vertex_buffer_desc, sizeof(vertex_buffer_desc));
-
-	vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-	vertex_buffer_desc.ByteWidth = ARRAYSIZE(v2) * sizeof(Vertex);
-	vertex_buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vertex_buffer_desc.CPUAccessFlags = 0;
-	vertex_buffer_desc.MiscFlags = 0;
-
-	ZeroMemory(&vertex_buffer_data, sizeof(vertex_buffer_data));
-
-	vertex_buffer_data.pSysMem = v2;
-
-	hr = this->device_->CreateBuffer(&vertex_buffer_desc, &vertex_buffer_data, this->vertex_buffer2_.GetAddressOf());
-	if (FAILED(hr))
+	hr = this->indices_buffer_.Initialize(this->device_.Get(), indices, ARRAYSIZE(indices));
+	if(FAILED(hr))
 	{
-		ErrorLogger::Log(hr, "Failed to create vertex buffer");
+		ErrorLogger::Log(hr, "Failed to create indices buffer.");
+		return false;
+	}
+
+	//Load texture
+	hr = DirectX::CreateWICTextureFromFile(this->device_.Get(), L"Data/Textures/piano.png", nullptr, texture_.GetAddressOf());
+	if(FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to create WIC texture from file.");
+		return false;
+	}
+
+	// Initialize constant buffer(s)
+	hr = this->constant_buffer_.Initialize(this->device_.Get(), this->device_context_.Get());
+	if(FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to initialize constant buffer.");
 		return false;
 	}
 

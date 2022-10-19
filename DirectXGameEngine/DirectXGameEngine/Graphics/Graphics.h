@@ -4,12 +4,16 @@
 #include "Vertex.h"
 #include <SpriteBatch.h>
 #include <SpriteFont.h>
+#include <WICTextureLoader.h>
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
+#include "ConstantBuffer.h"
 
 class Graphics
 {
 public:
 	bool Initialize(HWND hwnd, int width, int height);
-	void RenderFrame() const;
+	void RenderFrame();
 private:
 	bool InitializeDirectX(HWND hwnd, int width, int height);
 	bool InitializeShaders();
@@ -22,9 +26,10 @@ private:
 
 	VertexShader vertex_shader_;
 	PixelShader pixel_shader_;
+	ConstantBuffer<CB_VS_vertex_shader> constant_buffer_;
 
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertex_buffer_;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertex_buffer2_;
+	VertexBuffer<Vertex> vertex_buffer_;
+	IndexBuffer indices_buffer_;
 
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depth_stencil_view_;
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> depth_stencil_buffer_;
@@ -36,4 +41,5 @@ private:
 	std::unique_ptr<DirectX::SpriteFont> sprite_font_;
 
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> sample_state_;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> texture_;
 };
