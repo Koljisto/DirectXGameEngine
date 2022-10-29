@@ -6,6 +6,7 @@ int APIENTRY wWinMain(_In_ const HINSTANCE hInstance,
                       _In_ int nShowCmd)
 {
 	const HRESULT hr = CoInitialize(NULL);
+
 	if(FAILED(hr))
 	{
 		ErrorLogger::Log(hr, "Failed to call CoInitialize.");

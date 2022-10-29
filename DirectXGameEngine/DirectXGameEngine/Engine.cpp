@@ -46,8 +46,13 @@ void Engine::Update()
 		}
 	}
 
-	const float cameraSpeed = 0.006f;
+	this->gfx.gameObject.AdjustRotation(0.0f, 0.001f * dt, 0.0f);
 
+	float cameraSpeed = 0.006f;
+	if(keyboard.KeyIsPressed(VK_SHIFT))
+	{
+		cameraSpeed = 0.3f;
+	}
 	if (keyboard.KeyIsPressed('W'))
 	{
 		this->gfx.camera.AdjustPosition(this->gfx.camera.GetForwardVector() * cameraSpeed * dt);
