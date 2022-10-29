@@ -1,24 +1,24 @@
-cbuffer my_cbuffer : register (b0)
+cbuffer mycBuffer : register(b0)
 {
-	float4x4 mat;
-}
+    float4x4 mat;
+};
 
 struct VS_INPUT
 {
-    float3 in_pos : POSITION;
-    float2 in_tex_coord : TEXCOORD;
+    float3 inPos : POSITION;
+    float2 inTexCoord : TEXCOORD;
 };
 
 struct VS_OUTPUT
 {
-    float4 out_position : SV_POSITION;
-    float2 out_tex_coord : TEXCOORD;
+    float4 outPosition : SV_POSITION;
+    float2 outTexCoord : TEXCOORD;
 };
 
 VS_OUTPUT main(VS_INPUT input)
 {
     VS_OUTPUT output;
-    output.out_position = mul(float4(input.in_pos, 1.0f), mat);
-    output.out_tex_coord = input.in_tex_coord;
+    output.outPosition = mul(float4(input.inPos, 1.0f), mat);
+    output.outTexCoord = input.inTexCoord;
     return output;
 }

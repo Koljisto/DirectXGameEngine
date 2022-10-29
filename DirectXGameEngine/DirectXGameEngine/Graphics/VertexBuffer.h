@@ -1,8 +1,8 @@
 ﻿#ifndef VertexBuffer_h__
 #define VertexBuffer_h__
 #include <d3d11.h>
-#include <memory>
 #include <wrl/client.h>
+
 template<class T>
 class VertexBuffer
 {
@@ -10,56 +10,63 @@ private:
 	VertexBuffer(const VertexBuffer<T>& rhs);
 
 private:
-	Microsoft::WRL::ComPtr<ID3D11Buffer> buffer_;
-	std::unique_ptr<UINT> stride_;
-	UINT buffer_size_ = 0;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> buffer;
+	std::unique_ptr<UINT> stride;
+	UINT bufferSize = 0;
+
 public:
 	VertexBuffer() {}
 
-	ID3D11Buffer* Get() const
+	ID3D11Buffer* Get()const
 	{
-		return buffer_.Get();
+		return buffer.Get();
 	}
-	ID3D11Buffer* const* GetAddressOf() const
+
+	ID3D11Buffer* const* GetAddressOf()const
 	{
-		return buffer_.GetAddressOf();
+		return buffer.GetAddressOf();
 	}
 
 	UINT BufferSize() const
 	{
-		return this->buffer_size_;
+		return this->bufferSize;
 	}
 
-	UINT Stride() const
+	const UINT Stride() const
 	{
-		return *this->stride_.get();
+		return *this->stride.get();
 	}
 
 	const UINT* StridePtr() const
 	{
-		return this->stride_.get();
+		return this->stride.get();
 	}
 
-	HRESULT Initialize(ID3D11Device *device, T * data, UINT num_vertices)
+	HRESULT Initialize(ID3D11Device* device, T* data, UINT numVertices)
 	{
-		this->buffer_size_ = num_vertices;
-		this->stride_ = std::make_unique<UINT>(sizeof(T));
+		if (buffer.Get() != nullptr)
+			buffer.Reset();
 
-		D3D11_BUFFER_DESC vertex_buffer_desc;
-		ZeroMemory(&vertex_buffer_desc, sizeof(vertex_buffer_desc));
+		this->bufferSize = numVertices;
+		if (this->stride.get() == nullptr)
+			this->stride = std::make_unique<UINT>(sizeof(T));
 
-		vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-		vertex_buffer_desc.ByteWidth = sizeof(T) * num_vertices;
-		vertex_buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		vertex_buffer_desc.CPUAccessFlags = 0;
-		vertex_buffer_desc.MiscFlags = 0;
+		D3D11_BUFFER_DESC vertexBufferDesc;
+		ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
-		D3D11_SUBRESOURCE_DATA vertex_buffer_data;
-		ZeroMemory(&vertex_buffer_data, sizeof(vertex_buffer_data));
-		vertex_buffer_data.pSysMem = data;
+		vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		vertexBufferDesc.ByteWidth = sizeof(T) * numVertices;
+		vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		vertexBufferDesc.CPUAccessFlags = 0;
+		vertexBufferDesc.MiscFlags = 0;
 
-		HRESULT hr = device->CreateBuffer(&vertex_buffer_desc, &vertex_buffer_data, this->buffer_.GetAddressOf());
+		D3D11_SUBRESOURCE_DATA vertexBufferData;
+		ZeroMemory(&vertexBufferData, sizeof(vertexBufferData));
+		vertexBufferData.pSysMem = data;
+
+		HRESULT hr = device->CreateBuffer(&vertexBufferDesc, &vertexBufferData, this->buffer.GetAddressOf());
 		return hr;
 	}
 };
-#endif
+
+#endif // VertexBuffer_h__

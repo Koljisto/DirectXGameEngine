@@ -8,38 +8,51 @@
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "ConstantBuffer.h"
+#include "Camera.h"
+#include "..\\Timer.h"
+#include "ImGUI\\imgui.h"
+#include "ImGUI\\imgui_impl_win32.h"
+#include "ImGUI\\imgui_impl_dx11.h"
 
 class Graphics
 {
 public:
 	bool Initialize(HWND hwnd, int width, int height);
 	void RenderFrame();
+	Camera camera;
 private:
-	bool InitializeDirectX(HWND hwnd, int width, int height);
+	bool InitializeDirectX(HWND hwnd);
 	bool InitializeShaders();
 	bool InitializeScene();
-		
-	Microsoft::WRL::ComPtr<ID3D11Device> device_;
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> device_context_;
-	Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain_;
-	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> render_target_view_;
 
-	VertexShader vertex_shader_;
-	PixelShader pixel_shader_;
-	ConstantBuffer<CB_VS_vertex_shader> constant_buffer_;
+	Microsoft::WRL::ComPtr<ID3D11Device> device;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext;
+	Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;
 
-	VertexBuffer<Vertex> vertex_buffer_;
-	IndexBuffer indices_buffer_;
+	VertexShader vertexshader;
+	PixelShader pixelshader;
+	ConstantBuffer<CB_VS_vertexshader> cb_vs_vertexshader;
+	ConstantBuffer<CB_PS_pixelshader> cb_ps_pixelshader;
 
-	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depth_stencil_view_;
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> depth_stencil_buffer_;
-	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depth_stencil_state_;
+	VertexBuffer<Vertex> vertexBuffer;
+	IndexBuffer indicesBuffer;
 
-	Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizer_state_;
 
-	std::unique_ptr<DirectX::SpriteBatch> sprite_batch_;
-	std::unique_ptr<DirectX::SpriteFont> sprite_font_;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthStencilView;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> depthStencilBuffer;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencilState;
 
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> sample_state_;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> texture_;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizerState;
+	Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;
+
+	std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
+	std::unique_ptr<DirectX::SpriteFont> spriteFont;
+
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
+
+	int windowWidth = 0;
+	int windowHeight = 0;
+	Timer fpsTimer;
 };

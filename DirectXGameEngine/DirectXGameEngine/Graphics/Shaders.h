@@ -1,30 +1,30 @@
 ﻿#pragma once
-#include "..//ErrorLogger.h"
+#include "..\\ErrorLogger.h"
 #pragma comment(lib, "D3DCompiler.lib")
 #include <d3d11.h>
-#include <wrl//client.h>
+#include <wrl/client.h>
 #include <d3dcompiler.h>
 
 class VertexShader
 {
 public:
-	bool Initialize(const Microsoft::WRL::ComPtr<ID3D11Device> &device, const std::wstring& shader_path, const D3D11_INPUT_ELEMENT_DESC* layout_desc, UINT num_elements);
-	ID3D11VertexShader* GetShader() const;
-	ID3D10Blob* GetBuffer() const;
-	ID3D11InputLayout* GetInputLayout() const;
+	bool Initialize(Microsoft::WRL::ComPtr<ID3D11Device>& device, std::wstring shaderpath, D3D11_INPUT_ELEMENT_DESC* layoutDesc, UINT numElements);
+	ID3D11VertexShader* GetShader();
+	ID3D10Blob* GetBuffer();
+	ID3D11InputLayout* GetInputLayout();
 private:
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> shader_;
-	Microsoft::WRL::ComPtr<ID3D10Blob> shader_buffer_;
-	Microsoft::WRL::ComPtr<ID3D11InputLayout> input_layout_;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> shader;
+	Microsoft::WRL::ComPtr<ID3D10Blob> shader_buffer;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 };
 
 class PixelShader
 {
 public:
-	bool Initialize(const Microsoft::WRL::ComPtr<ID3D11Device>& device, const std::wstring& shader_path);
-	ID3D11PixelShader* GetShader() const;
-	ID3D10Blob* GetBuffer() const;
+	bool Initialize(Microsoft::WRL::ComPtr<ID3D11Device>& device, std::wstring shaderpath);
+	ID3D11PixelShader* GetShader();
+	ID3D10Blob* GetBuffer();
 private:
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> shader_;
-	Microsoft::WRL::ComPtr<ID3D10Blob> shader_buffer_;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> shader;
+	Microsoft::WRL::ComPtr<ID3D10Blob> shader_buffer;
 };

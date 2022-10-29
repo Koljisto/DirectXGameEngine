@@ -1,14 +1,19 @@
+cbuffer alphaBuffer : register(b0)
+{
+    float alpha;
+}
+
 struct PS_INPUT
 {
-    float4 in_position : SV_POSITION;
-    float2 in_tex_coord : TEXCOORD;
+    float4 inPosition : SV_POSITION;
+    float2 inTexCoord : TEXCOORD;
 };
 
-Texture2D obj_texture : TEXTURE : register(t0);
-SamplerState obj_sampler_state : SAMPLER : register(s0);
+Texture2D objTexture : TEXTURE: register(t0);
+SamplerState objSamplerState : SAMPLER: register(s0);
 
-float4 main(const PS_INPUT input) : SV_TARGET
+float4 main(PS_INPUT input) : SV_TARGET
 {
-    float3 pixel_color = obj_texture.Sample(obj_sampler_state, input.in_tex_coord);
-    return float4(pixel_color, 1.0f);
+    float3 pixelColor = objTexture.Sample(objSamplerState, input.inTexCoord);
+    return float4(pixelColor, alpha);
 }

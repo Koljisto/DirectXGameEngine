@@ -1,10 +1,9 @@
 ﻿#include "WindowContainer.h"
-#include <memory>
 
 WindowContainer::WindowContainer()
 {
-	static bool raw_input_initialized = false;
-	if (raw_input_initialized == false)
+	static bool rawInputInitializedCond = false;
+	if (rawInputInitializedCond == false)
 	{
 		RAWINPUTDEVICE rid;
 
@@ -19,143 +18,144 @@ WindowContainer::WindowContainer()
 			exit(-1);
 		}
 
-		raw_input_initialized = true;
+		rawInputInitializedCond = true;
 	}
 }
 
-LRESULT WindowContainer::WindowProc(const HWND hwnd, const UINT uMsg, const WPARAM wParam, const LPARAM lParam)
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+LRESULT WindowContainer::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+		return true;
+
 	switch (uMsg)
 	{
-
-		// Keyboard Messages
-		case WM_KEYDOWN:
+		//Keyboard Messages
+	case WM_KEYDOWN:
+	{
+		unsigned char keycode = static_cast<unsigned char>(wParam);
+		if (keyboard.IsKeyAutoRepeat())
 		{
-			const auto key_code = static_cast<unsigned char>(wParam);
-
-			if (keyboard_.IsKeyAutoRepeat())
+			keyboard.OnKeyPressed(keycode);
+		}
+		else
+		{
+			const bool wasPressed = lParam & 0x40000000;
+			if (!wasPressed)
 			{
-				keyboard_.OnKeyPressed(key_code);
+				keyboard.OnKeyPressed(keycode);
 			}
-			else
+		}
+		return 0;
+	}
+	case WM_KEYUP:
+	{
+		unsigned char keycode = static_cast<unsigned char>(wParam);
+		keyboard.OnKeyReleased(keycode);
+		return 0;
+	}
+	case WM_CHAR:
+	{
+		unsigned char ch = static_cast<unsigned char>(wParam);
+		if (keyboard.IsCharsAutoRepeat())
+		{
+			keyboard.OnChar(ch);
+		}
+		else
+		{
+			const bool wasPressed = lParam & 0x40000000;
+			if (!wasPressed)
 			{
-				const bool was_pressed = lParam & 0x40000000;
-				if (!was_pressed)
+				keyboard.OnChar(ch);
+			}
+		}
+		return 0;
+	}
+	//Mouse Messages
+	case WM_MOUSEMOVE:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnMouseMove(x, y);
+		return 0;
+	}
+	case WM_LBUTTONDOWN:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnLeftPressed(x, y);
+		return 0;
+	}
+	case WM_RBUTTONDOWN:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnRightPressed(x, y);
+		return 0;
+	}
+	case WM_MBUTTONDOWN:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnMiddlePressed(x, y);
+		return 0;
+	}
+	case WM_LBUTTONUP:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnLeftReleased(x, y);
+		return 0;
+	}
+	case WM_RBUTTONUP:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnRightReleased(x, y);
+		return 0;
+	}
+	case WM_MBUTTONUP:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		mouse.OnMiddleReleased(x, y);
+		return 0;
+	}
+	case WM_MOUSEWHEEL:
+	{
+		int x = LOWORD(lParam);
+		int y = HIWORD(lParam);
+		if (GET_WHEEL_DELTA_WPARAM(wParam) > 0)
+		{
+			mouse.OnWheelUp(x, y);
+		}
+		else if (GET_WHEEL_DELTA_WPARAM(wParam) < 0)
+		{
+			mouse.OnWheelDown(x, y);
+		}
+		return 0;
+	}
+	case WM_INPUT:
+	{
+		UINT dataSize;
+		GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, NULL, &dataSize, sizeof(RAWINPUTHEADER)); //Need to populate data size first
+
+		if (dataSize > 0)
+		{
+			std::unique_ptr<BYTE[]> rawdata = std::make_unique<BYTE[]>(dataSize);
+			if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, rawdata.get(), &dataSize, sizeof(RAWINPUTHEADER)) == dataSize)
+			{
+				RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(rawdata.get());
+				if (raw->header.dwType == RIM_TYPEMOUSE)
 				{
-					keyboard_.OnKeyPressed(key_code);
+					mouse.OnMouseMoveRaw(raw->data.mouse.lLastX, raw->data.mouse.lLastY);
 				}
 			}
-			return 0;
 		}
-		case WM_KEYUP:
-		{
-			const auto key_code = static_cast<unsigned char>(wParam);
-			keyboard_.OnKeyReleased(key_code);
-			return 0;
-		}
-		case WM_CHAR:
-		{
-			const auto ch = static_cast<unsigned char>(wParam);
-			if (keyboard_.IsCharsAutoRepeat())
-			{
-				keyboard_.OnChar(ch);
-			}
-			else
-			{
-				const bool was_pressed = lParam & 0x40000000;
-				if(!was_pressed)
-				{
-					keyboard_.OnChar(ch);
-				}
-			}
-			return 0;
-		}
-		// Mouse Messages
-		case WM_MOUSEMOVE:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnMouseMove(x, y);
-			return 0;
-		}
-		case WM_LBUTTONDOWN:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnLeftPressed(x, y);
-			return 0;
-		}
-		case WM_RBUTTONDOWN:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnRightPressed(x, y);
-			return 0;
-		}
-		case WM_MBUTTONDOWN:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnMiddlePressed(x, y);
-			return 0;
-		}
-		case WM_LBUTTONUP:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnLeftReleased(x, y);
-			return 0;
-		}
-		case WM_RBUTTONUP:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnRightReleased(x, y);
-			return 0;
-		}
-		case WM_MBUTTONUP:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			mouse_.OnMiddleReleased(x, y);
-			return 0;
-		}
-		case WM_MOUSEWHEEL:
-		{
-			const int x = LOWORD(lParam);
-			const int y = HIWORD(lParam);
-			if(GET_WHEEL_DELTA_WPARAM(wParam) > 0)
-			{
-				mouse_.OnWheelUp(x, y);
-			}
-			else if (GET_WHEEL_DELTA_WPARAM(wParam) > 0)
-			{
-				mouse_.OnWheelDown(x, y);
-			}
-			return 0;
-		}
-		case WM_INPUT:
-		{
-			UINT data_size;
-			GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, NULL, &data_size, sizeof(RAWINPUTHEADER));
-			//Need to populate data size first
 
-			if (data_size > 0)
-			{
-				const auto raw_data = std::make_unique<BYTE[]>(data_size);
-				if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, raw_data.get(), &data_size, sizeof(RAWINPUTHEADER)) == data_size)
-				{
-					const RAWINPUT* raw = reinterpret_cast<RAWINPUT*>(raw_data.get());
-					if (raw->header.dwType == RIM_TYPEMOUSE)
-					{
-						mouse_.OnMouseMoveRaw(raw->data.mouse.lLastX, raw->data.mouse.lLastY);
-					}
-				}
-			}
-
-			return DefWindowProc(hwnd, uMsg, wParam, lParam); //Need to call DefWindowProc for WM_INPUT messages
-		}
-		default:
-			return DefWindowProc(hwnd, uMsg, wParam, lParam);
+		return DefWindowProc(hwnd, uMsg, wParam, lParam); //Need to call DefWindowProc for WM_INPUT messages
+	}
+	default:
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}
 }
