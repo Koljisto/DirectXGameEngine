@@ -45,7 +45,7 @@ public:
 		return this->vertexCount;
 	}
 
-	UINT Stride() const
+	const UINT Stride() const
 	{
 		return this->stride;
 	}

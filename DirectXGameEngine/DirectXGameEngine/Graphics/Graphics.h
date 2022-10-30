@@ -5,7 +5,7 @@
 #include <SpriteFont.h>
 #include <WICTextureLoader.h>
 #include "Camera.h"
-#include "GameObject.h"
+#include "RenderableGameObject.h"
 #include "..\\Timer.h"
 #include "ImGUI\\imgui.h"
 #include "ImGUI\\imgui_impl_win32.h"
@@ -17,7 +17,7 @@ public:
 	bool Initialize(HWND hwnd, int width, int height);
 	void RenderFrame();
 	Camera camera;
-	GameObject gameObject;
+	RenderableGameObject gameObject;
 private:
 	bool InitializeDirectX(HWND hwnd);
 	bool InitializeShaders();
