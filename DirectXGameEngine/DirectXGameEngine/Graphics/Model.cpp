@@ -27,8 +27,8 @@ void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatr
 	for (int i = 0; i < meshes.size(); i++)
 	{
 		//Update Constant buffer with WVP Matrix
-		this->cb_vs_vertexshader->data.mat = meshes[i].GetTransformMatrix() * worldMatrix * viewProjectionMatrix; //Calculate World-View-Projection Matrix
-		this->cb_vs_vertexshader->data.mat = XMMatrixTranspose(this->cb_vs_vertexshader->data.mat);
+		this->cb_vs_vertexshader->data.wvpMatrix = meshes[i].GetTransformMatrix() * worldMatrix * viewProjectionMatrix; //Calculate World-View-Projection Matrix
+		this->cb_vs_vertexshader->data.worldMatrix = meshes[i].GetTransformMatrix() * worldMatrix; //Calculate World Matrix
 		this->cb_vs_vertexshader->ApplyChanges();
 		meshes[i].Draw();
 	}
@@ -70,22 +70,27 @@ void Model::ProcessNode(aiNode* node, const aiScene* scene, const XMMATRIX& pare
 Mesh Model::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX& transformMatrix)
 {
 	// Data to fill
-	std::vector<Vertex> vertices;
+	std::vector<Vertex3D> vertices;
 	std::vector<DWORD> indices;
 
 	//Get vertices
 	for (UINT i = 0; i < mesh->mNumVertices; i++)
 	{
-		Vertex vertex;
+		Vertex3D vertex;
 
 		vertex.pos.x = mesh->mVertices[i].x;
 		vertex.pos.y = mesh->mVertices[i].y;
 		vertex.pos.z = mesh->mVertices[i].z;
 
+		vertex.normal.x = mesh->mNormals[i].x;
+		vertex.normal.y = mesh->mNormals[i].y;
+		vertex.normal.z = mesh->mNormals[i].z;
+
 		if (mesh->mTextureCoords[0])
 		{
 			vertex.texCoord.x = (float)mesh->mTextureCoords[0][i].x;
 			vertex.texCoord.y = (float)mesh->mTextureCoords[0][i].y;
+
 		}
 
 		vertices.push_back(vertex);

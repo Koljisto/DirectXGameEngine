@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Vertex.h"
+#include "Vertex3D.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "ConstantBuffer.h"
@@ -11,12 +11,12 @@
 class Mesh
 {
 public:
-	Mesh(ID3D11Device* device, ID3D11DeviceContext* deviceContext, std::vector<Vertex>& vertices, std::vector<DWORD>& indices, std::vector<Texture>& textures, const DirectX::XMMATRIX& transformMatrix);
+	Mesh(ID3D11Device* device, ID3D11DeviceContext* deviceContext, std::vector<Vertex3D>& vertices, std::vector<DWORD>& indices, std::vector<Texture>& textures, const DirectX::XMMATRIX& transformMatrix);
 	Mesh(const Mesh& mesh);
 	void Draw();
 	const DirectX::XMMATRIX& GetTransformMatrix();
 private:
-	VertexBuffer<Vertex> vertexbuffer;
+	VertexBuffer<Vertex3D> vertexbuffer;
 	IndexBuffer indexbuffer;
 	ID3D11DeviceContext* deviceContext;
 	std::vector<Texture> textures;

@@ -28,23 +28,47 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 
 void Graphics::RenderFrame()
 {
+	cb_ps_light.data.dynamicLightColor = light.lightColor;
+	cb_ps_light.data.dynamicLightStrength = light.lightStrength;
+	cb_ps_light.data.dynamicLightPosition = light.GetPositionFloat3();
+	cb_ps_light.data.dynamicLightAttenuation_a = light.attenuation_a;
+	cb_ps_light.data.dynamicLightAttenuation_b = light.attenuation_b;
+	cb_ps_light.data.dynamicLightAttenuation_c = light.attenuation_c;
+	cb_ps_light.ApplyChanges();
+	deviceContext->PSSetConstantBuffers(0, 1, cb_ps_light.GetAddressOf());
 
 	float bgcolor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), bgcolor);
-	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	deviceContext->ClearRenderTargetView(renderTargetView.Get(), bgcolor);
+	deviceContext->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	this->deviceContext->IASetInputLayout(this->vertexshader.GetInputLayout());
-	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	this->deviceContext->RSSetState(this->rasterizerState.Get());
-	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
-	this->deviceContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
-	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
-	this->deviceContext->VSSetShader(vertexshader.GetShader(), NULL, 0);
-	this->deviceContext->PSSetShader(pixelshader.GetShader(), NULL, 0);
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	deviceContext->RSSetState(rasterizerState.Get());
+	deviceContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+	deviceContext->PSSetSamplers(0, 1, samplerState.GetAddressOf());
+
+
+	deviceContext->OMSetDepthStencilState(depthStencilState_drawMask.Get(), 0);
+	deviceContext->IASetInputLayout(vertexshader_2d.GetInputLayout());
+	deviceContext->PSSetShader(NULL, NULL, 0);
+	// deviceContext->PSSetShader(pixelshader_2d.GetShader(), NULL, 0);
+	deviceContext->VSSetShader(vertexshader_2d.GetShader(), NULL, 0);
+	sprite.Draw(camera2D.GetWorldMatrix() * camera2D.GetOrthoMatrix());
+
+	deviceContext->VSSetShader(vertexshader.GetShader(), NULL, 0);
+	deviceContext->PSSetShader(pixelshader.GetShader(), NULL, 0);
+	deviceContext->IASetInputLayout(vertexshader.GetInputLayout());
+	deviceContext->OMSetDepthStencilState(depthStencilState.Get(), 0);
+	// deviceContext->OMSetDepthStencilState(depthStencilState_applyMask.Get(), 0);
 
 	{
-		this->gameObject.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		gameObject.Draw(camera3D.GetViewMatrix() * camera3D.GetProjectionMatrix());
 	}
+	{
+		deviceContext->PSSetShader(pixelshader_nolight.GetShader(), NULL, 0);
+		light.Draw(camera3D.GetViewMatrix() * camera3D.GetProjectionMatrix());
+	}
+
+
 
 	//Draw Text
 	static int fpsCounter = 0;
@@ -56,8 +80,21 @@ void Graphics::RenderFrame()
 		fpsCounter = 0;
 		fpsTimer.Restart();
 	}
+
 	spriteBatch->Begin();
 	spriteFont->DrawString(spriteBatch.get(), StringHelper::StringToWide(fpsString).c_str(), DirectX::XMFLOAT2(0, 0), DirectX::Colors::White, 0.0f, DirectX::XMFLOAT2(0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f));
+	spriteBatch->End();
+	//sprite mask
+	deviceContext->OMSetDepthStencilState(depthStencilState_drawMask.Get(), 0);
+	deviceContext->IASetInputLayout(vertexshader_2d.GetInputLayout());
+	deviceContext->PSSetShader(NULL, NULL, 0);
+	// deviceContext->PSSetShader(pixelshader_2d.GetShader(), NULL, 0);
+	deviceContext->VSSetShader(vertexshader_2d.GetShader(), NULL, 0);
+	sprite.Draw(camera2D.GetWorldMatrix() * camera2D.GetOrthoMatrix());
+
+	//red text
+	spriteBatch->Begin(SpriteSortMode_Deferred, nullptr, nullptr, depthStencilState_applyMask.Get());
+	spriteFont->DrawString(spriteBatch.get(), StringHelper::StringToWide(fpsString).c_str(), DirectX::XMFLOAT2(0, 0), DirectX::Colors::Red, 0.0f, DirectX::XMFLOAT2(0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f));
 	spriteBatch->End();
 
 	static int counter = 0;
@@ -66,7 +103,15 @@ void Graphics::RenderFrame()
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	//Create ImGui Test Window
-	ImGui::Begin("Test");
+	ImGui::Begin("Light Controls");
+	ImGui::DragFloat3("Ambient Light Color", &this->cb_ps_light.data.ambientLightColor.x, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Ambient Light Strength", &this->cb_ps_light.data.ambientLightStrength, 0.01f, 0.0f, 1.0f);
+	ImGui::NewLine();
+	ImGui::DragFloat3("Dynamic Light Color", &this->light.lightColor.x, 0.01f, 0.0f, 10.0f);
+	ImGui::DragFloat("Dynamic Light Strength", &this->light.lightStrength, 0.01f, 0.0f, 10.0f);
+	ImGui::DragFloat("Dynamic Light Attenuation A", &this->light.attenuation_a, 0.01f, 0.1f, 10.0f);
+	ImGui::DragFloat("Dynamic Light Attenuation B", &this->light.attenuation_b, 0.01f, 0.0f, 10.0f);
+	ImGui::DragFloat("Dynamic Light Attenuation C", &this->light.attenuation_c, 0.01f, 0.0f, 10.0f);
 	ImGui::End();
 	//Assemble Together Draw Data
 	ImGui::Render();
@@ -151,8 +196,43 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 		hr = this->device->CreateDepthStencilState(&depthstencildesc, this->depthStencilState.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil state.");
 
+		CD3D11_DEPTH_STENCIL_DESC depthstencildesc_drawMask(D3D11_DEFAULT);
+		depthstencildesc_drawMask.DepthEnable = FALSE;
+		depthstencildesc_drawMask.StencilEnable = TRUE;
+
+		depthstencildesc_drawMask.BackFace.StencilFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_NEVER;
+		depthstencildesc_drawMask.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_drawMask.BackFace.StencilFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_drawMask.BackFace.StencilPassOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+
+		depthstencildesc_drawMask.FrontFace.StencilFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_ALWAYS;
+		depthstencildesc_drawMask.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_drawMask.FrontFace.StencilFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_drawMask.FrontFace.StencilPassOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_INCR_SAT;
+
+		hr = this->device->CreateDepthStencilState(&depthstencildesc_drawMask, this->depthStencilState_drawMask.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil state for drawing mask.");
+
+		CD3D11_DEPTH_STENCIL_DESC depthstencildesc_applyMask(D3D11_DEFAULT);
+		depthstencildesc_applyMask.DepthFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_LESS_EQUAL;
+		depthstencildesc_applyMask.StencilEnable = TRUE;
+
+		depthstencildesc_applyMask.BackFace.StencilFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_NEVER;
+		depthstencildesc_applyMask.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_applyMask.BackFace.StencilFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_applyMask.BackFace.StencilPassOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+
+		depthstencildesc_applyMask.FrontFace.StencilFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_LESS;
+		depthstencildesc_applyMask.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_applyMask.FrontFace.StencilFailOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+		depthstencildesc_applyMask.FrontFace.StencilPassOp = D3D11_STENCIL_OP::D3D11_STENCIL_OP_KEEP;
+
+		hr = this->device->CreateDepthStencilState(&depthstencildesc_applyMask, this->depthStencilState_applyMask.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil state for applying mask.");
+
+
 		//Create & set the Viewport
-		CD3D11_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(this->windowWidth), static_cast<float>(this->windowHeight));
+		CD3D11_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(this->windowWidth), static_cast<float>(this->windowHeight));;
 		this->deviceContext->RSSetViewports(1, &viewport);
 
 		//Create Rasterizer State
@@ -224,18 +304,38 @@ bool Graphics::InitializeShaders()
 #endif
 	}
 
-	D3D11_INPUT_ELEMENT_DESC layout[] =
+	//2d shaders
+	D3D11_INPUT_ELEMENT_DESC layout2D[] =
 	{
 		{"POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0  },
 		{"TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0  },
 	};
 
-	UINT numElements = ARRAYSIZE(layout);
+	UINT numElements2D = ARRAYSIZE(layout2D);
 
-	if (!vertexshader.Initialize(this->device, shaderfolder + L"vertexshader.cso", layout, numElements))
+	if (!vertexshader_2d.Initialize(this->device, shaderfolder + L"vertexshader2d.cso", layout2D, numElements2D))
+		return false;
+
+	if (!pixelshader_2d.Initialize(this->device, shaderfolder + L"pixelshader2d.cso"))
+		return false;
+
+	//3d shaders
+	D3D11_INPUT_ELEMENT_DESC layout3D[] =
+	{
+		{"POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0  },
+		{"TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0  },
+		{"NORMAL", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0  },
+	};
+
+	UINT numElements3D = ARRAYSIZE(layout3D);
+
+	if (!vertexshader.Initialize(this->device, shaderfolder + L"vertexshader.cso", layout3D, numElements3D))
 		return false;
 
 	if (!pixelshader.Initialize(this->device, shaderfolder + L"pixelshader.cso"))
+		return false;
+
+	if (!pixelshader_nolight.Initialize(this->device, shaderfolder + L"pixelshader_nolight.cso"))
 		return false;
 
 
@@ -246,28 +346,46 @@ bool Graphics::InitializeScene()
 {
 	try
 	{
-		// //Load Texture
-		// HRESULT hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data\\Textures\\seamless_grass.jpg", nullptr, grassTexture.GetAddressOf());
-		// COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
-		//
-		// hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data\\Textures\\pinksquare.jpg", nullptr, pinkTexture.GetAddressOf());
-		// COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
-		//
-		// hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data\\Textures\\seamless_pavement.jpg", nullptr, pavementTexture.GetAddressOf());
-		// COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
+		//Load Texture
+		HRESULT hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data\\Textures\\seamless_grass.jpg", nullptr, grassTexture.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
+
+		hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data\\Textures\\pinksquare.jpg", nullptr, pinkTexture.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
+
+		hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data\\Textures\\seamless_pavement.jpg", nullptr, pavementTexture.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
 
 		//Initialize Constant Buffer(s)
-		HRESULT hr = this->cb_vs_vertexshader.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = this->cb_vs_vertexshader_2d.Initialize(this->device.Get(), this->deviceContext.Get());
+		COM_ERROR_IF_FAILED(hr, "Failed to initialize 2d constant buffer.");
+
+		hr = this->cb_vs_vertexshader.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		hr = this->cb_ps_pixelshader.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = this->cb_ps_light.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		if (!gameObject.Initialize("Data\\Objects\\nanosuit\\nanosuit.blend", this->device.Get(), this->deviceContext.Get(), this->cb_vs_vertexshader))
+		this->cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		this->cb_ps_light.data.ambientLightStrength = 1.0f;
+
+		if (!gameObject.Initialize("Data\\Objects\\Nanosuit\\Nanosuit.obj", this->device.Get(), this->deviceContext.Get(), this->cb_vs_vertexshader))
 			return false;
 
-		camera.SetPosition(0.0f, 0.0f, -2.0f);
-		camera.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 1000.0f);
+		if (!light.Initialize(this->device.Get(), this->deviceContext.Get(), this->cb_vs_vertexshader))
+			return false;
+
+		if (!sprite.Initialize(this->device.Get(), this->deviceContext.Get(), 256, 256, "Data/Textures/sprite_256x256.png", cb_vs_vertexshader_2d))
+			return false;
+
+		sprite.SetPosition(XMFLOAT3(0.0f, 0.0f, 0.0f));
+		sprite.SetScale(40, 40);
+
+		camera2D.SetProjectionValues(windowWidth, windowHeight, 0.0f, 1.0f);
+
+		camera3D.SetPosition(0.0f, 0.0f, -2.0f);
+		camera3D.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 3000.0f);
+
 	}
 	catch (COMException& exception)
 	{

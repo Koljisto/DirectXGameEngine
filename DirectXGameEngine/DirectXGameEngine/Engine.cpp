@@ -41,12 +41,12 @@ void Engine::Update()
 		{
 			if (me.GetType() == MouseEvent::EventType::RAW_MOVE)
 			{
-				this->gfx.camera.AdjustRotation(static_cast<float>(me.GetPosY()) * 0.01f, static_cast<float>(me.GetPosX()) * 0.01f, 0);
+				this->gfx.camera3D.AdjustRotation(static_cast<float>(me.GetPosY()) * 0.01f, static_cast<float>(me.GetPosX()) * 0.01f, 0);
 			}
 		}
 	}
 
-	// this->gfx.gameObject.AdjustRotation(0.0f, 0.001f * dt, 0.0f);
+	this->gfx.gameObject.AdjustRotation(0.0f, 0.001f * dt, 0.0f);
 
 	float cameraSpeed = 0.006f;
 	if(keyboard.KeyIsPressed(VK_SHIFT))
@@ -55,31 +55,37 @@ void Engine::Update()
 	}
 	if (keyboard.KeyIsPressed('W'))
 	{
-		this->gfx.camera.AdjustPosition(this->gfx.camera.GetForwardVector() * cameraSpeed * dt);
+		this->gfx.camera3D.AdjustPosition(this->gfx.camera3D.GetForwardVector() * cameraSpeed * dt);
 	}
 	if (keyboard.KeyIsPressed('S'))
 	{
-		this->gfx.camera.AdjustPosition(this->gfx.camera.GetBackwardVector() * cameraSpeed * dt);
+		this->gfx.camera3D.AdjustPosition(this->gfx.camera3D.GetBackwardVector() * cameraSpeed * dt);
 	}
 	if (keyboard.KeyIsPressed('A'))
 	{
-		this->gfx.camera.AdjustPosition(this->gfx.camera.GetLeftVector() * cameraSpeed * dt);
+		this->gfx.camera3D.AdjustPosition(this->gfx.camera3D.GetLeftVector() * cameraSpeed * dt);
 	}
 	if (keyboard.KeyIsPressed('D'))
 	{
-		this->gfx.camera.AdjustPosition(this->gfx.camera.GetRightVector() * cameraSpeed * dt);
+		this->gfx.camera3D.AdjustPosition(this->gfx.camera3D.GetRightVector() * cameraSpeed * dt);
 	}
 	if (keyboard.KeyIsPressed(VK_SPACE))
 	{
-		this->gfx.camera.AdjustPosition(0.0f, cameraSpeed * dt, 0.0f);
+		this->gfx.camera3D.AdjustPosition(0.0f, cameraSpeed * dt, 0.0f);
 	}
 	if (keyboard.KeyIsPressed('C'))
 	{
-		this->gfx.camera.AdjustPosition(0.0f, -cameraSpeed * dt, 0.0f);
+		this->gfx.camera3D.AdjustPosition(0.0f, -cameraSpeed * dt, 0.0f);
 	}
 
-
-
+	if (keyboard.KeyIsPressed('Z'))
+	{
+		XMVECTOR lightPosition = this->gfx.camera3D.GetPositionVector();
+		lightPosition += this->gfx.camera3D.GetForwardVector();
+		this->gfx.light.SetPosition(lightPosition);
+		this->gfx.light.SetRotation(this->gfx.camera3D.GetRotationFloat3());
+	}
+	
 }
 
 void Engine::RenderFrame()
